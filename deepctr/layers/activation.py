@@ -49,8 +49,7 @@ class Dice(Layer):
         super(Dice, self).__init__(**kwargs)
 
     def build(self, input_shape):
-        self.bn = BatchNormalization(
-            axis=self.axis, epsilon=self.epsilon, center=False, scale=False)
+        self.bn = BatchNormalization(axis=self.axis, epsilon=self.epsilon, center=False, scale=False)
         self.alphas = self.add_weight(shape=(input_shape[-1],), initializer=Zeros(
         ), dtype=tf.float32, name='dice_alpha')  # name='alpha_'+self.name
         super(Dice, self).build(input_shape)  # Be sure to call this somewhere!

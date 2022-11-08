@@ -62,7 +62,7 @@ class AFMLayer(Layer):
         super(AFMLayer, self).__init__(**kwargs)
 
     def build(self, input_shape):
-
+        # 如果不是list结构 或者 维度为1, 报错
         if not isinstance(input_shape, list) or len(input_shape) < 2:
             # input_shape = input_shape[0]
             # if not isinstance(input_shape, list) or len(input_shape) < 2:
@@ -87,23 +87,26 @@ class AFMLayer(Layer):
 
         embedding_size = int(input_shape[0][-1])
 
-        self.attention_W = self.add_weight(shape=(embedding_size,
-                                                  self.attention_factor), initializer=glorot_normal(seed=self.seed),
-                                           regularizer=l2(self.l2_reg_w), name="attention_W")
-        self.attention_b = self.add_weight(
-            shape=(self.attention_factor,), initializer=Zeros(), name="attention_b")
+        self.attention_W = self.add_weight(shape=(embedding_size, self.attention_factor),
+                                           initializer=glorot_normal(seed=self.seed),
+                                           regularizer=l2(self.l2_reg_w),
+                                           name="attention_W")
+        self.attention_b = self.add_weight(shape=(self.attention_factor,),
+                                           initializer=Zeros(),
+                                           name="attention_b")
         self.projection_h = self.add_weight(shape=(self.attention_factor, 1),
-                                            initializer=glorot_normal(seed=self.seed), name="projection_h")
-        self.projection_p = self.add_weight(shape=(
-            embedding_size, 1), initializer=glorot_normal(seed=self.seed), name="projection_p")
-        self.dropout = Dropout(
-            self.dropout_rate, seed=self.seed)
+                                            initializer=glorot_normal(seed=self.seed),
+                                            name="projection_h")
+        self.projection_p = self.add_weight(shape=(embedding_size, 1),
+                                            initializer=glorot_normal(seed=self.seed),
+                                            name="projection_p")
+        self.dropout = Dropout(self.dropout_rate, seed=self.seed)
 
-        self.tensordot = Lambda(
-            lambda x: tf.tensordot(x[0], x[1], axes=(-1, 0)))
+        self.tensordot = Lambda(lambda x: tf.tensordot(x[0], x[1], axes=(-1, 0)))
 
         # Be sure to call this somewhere!
         super(AFMLayer, self).build(input_shape)
+
 
     def call(self, inputs, training=None, **kwargs):
 
@@ -124,8 +127,7 @@ class AFMLayer(Layer):
         inner_product = p * q
 
         bi_interaction = inner_product
-        attention_temp = tf.nn.relu(tf.nn.bias_add(tf.tensordot(
-            bi_interaction, self.attention_W, axes=(-1, 0)), self.attention_b))
+        attention_temp = tf.nn.relu(tf.nn.bias_add(tf.tensordot(bi_interaction, self.attention_W, axes=(-1, 0)), self.attention_b))
         #  Dense(self.attention_factor,'relu',kernel_regularizer=l2(self.l2_reg_w))(bi_interaction)
         self.normalized_att_score = softmax(tf.tensordot(
             attention_temp, self.projection_h, axes=(-1, 0)), dim=1)
@@ -176,8 +178,7 @@ class BiInteractionPooling(Layer):
             raise ValueError(
                 "Unexpected inputs dimensions %d, expect to be 3 dimensions" % (len(input_shape)))
 
-        super(BiInteractionPooling, self).build(
-            input_shape)  # Be sure to call this somewhere!
+        super(BiInteractionPooling, self).build(input_shape)  # Be sure to call this somewhere!
 
     def call(self, inputs, **kwargs):
 
@@ -186,10 +187,8 @@ class BiInteractionPooling(Layer):
                 "Unexpected inputs dimensions %d, expect to be 3 dimensions" % (K.ndim(inputs)))
 
         concated_embeds_value = inputs
-        square_of_sum = tf.square(reduce_sum(
-            concated_embeds_value, axis=1, keep_dims=True))
-        sum_of_square = reduce_sum(
-            concated_embeds_value * concated_embeds_value, axis=1, keep_dims=True)
+        square_of_sum = tf.square(reduce_sum(concated_embeds_value, axis=1, keep_dims=True))
+        sum_of_square = reduce_sum(concated_embeds_value * concated_embeds_value, axis=1, keep_dims=True)
         cross_term = 0.5 * (square_of_sum - sum_of_square)
 
         return cross_term
